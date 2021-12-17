@@ -1,0 +1,539 @@
+openapi: 3.0.3
+info:
+  version: 2.0.3-SNAPSHOT
+  title: Streams Webhook Subscriber API v2.0.3-SNAPSHOT
+  x-audience: axway-customer
+  description: >-
+    Axway Streams augments your existing infrastructure with an event hub that facilitates the exchange of messages/events between devices, (micro) services and applications. Go beyond the traditional request-response paradigm and its limitations. Streams uses event-driven APIs such as server-sent events (SSE) and Webhooks to help you adopt event-driven integration patterns with your ecosystem.
+
+    Streams Webhook subscriber allows clients to be notified via a HTTP Post requests made by Streams to the endpoint that was provided during their subscription.
+  contact:
+    name: Streams
+    email: support@axway.com
+  x-logo:
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Axway_Logo.png/800px-Axway_Logo.png'
+servers:
+  - url: http://10.129.61.92:9003/streams/subscribers/webhook/api/v1
+    description: For Kubernetes environment
+  - url: http://10.129.61.92:9003/api/v1
+    description: For Docker-compose environment
+tags:
+  - name: subscriptions
+    description: Streams Webhook Subscriber
+    externalDocs:
+      url: https://streams-open-docs.netlify.app/docs/subscribers/subscriber-webhook/
+paths:
+  '/topics/{topicIdOrName}/subscriptions':
+    parameters:
+      - name: topicIdOrName
+        in: path
+        required: true
+        description: Topic ID or Name.
+        schema:
+          type: string
+    post:
+      description: Creates a webhook subscription to the specified topic.
+      tags:
+        - subscriptions
+      operationId: createSubscription
+      requestBody:
+        description: >-
+          A JSON object describing the webhook subscription.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookSubscription'
+      responses:
+        '201':
+          description: A webhook subscription as a JSON object.
+          headers:
+            Location:
+              description: The relative URI of the created resource.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    get:
+      description: Returns an array of all webhook subscriptions.
+      tags:
+        - subscriptions
+      operationId: getAllSubscriptions
+      parameters:
+        - $ref: '#/components/parameters/PageNumberParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/QueryParam'
+      responses:
+        '200':
+          description: A JSON array of webhook subscriptions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookSubscription'
+                  links:
+                    $ref: '#/components/schemas/Links'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+  '/subscriptions/{subscriptionId}':
+    parameters:
+      - name: subscriptionId
+        in: path
+        required: true
+        description: Subscription ID.
+        schema:
+          type: string
+          format: uuid
+    get:
+      description: Returns the specified webhook subscription.
+      tags:
+        - subscriptions
+      operationId: getSubscription
+      responses:
+        '200':
+          description: The webhook subscription has been successfully retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    patch:
+      description: Partially updates the identified webhook subscription.
+      tags:
+        - subscriptions
+      operationId: patchSubscription
+      requestBody:
+        description: A JSON object representing the subset of properties to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookSubscription'
+      responses:
+        '200':
+          description: The subscription has been successfully updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    delete:
+      description: Deletes the identified webhook subscription.
+      tags:
+        - subscriptions
+      operationId: deleteSubscription
+      responses:
+        '204':
+          description: The webhook subscription has been successfully deleted.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+  '/subscriptions/{subscriptionId}/test':
+    parameters:
+      - name: subscriptionId
+        in: path
+        required: true
+        description: Subscription ID.
+        schema:
+          type: string
+          format: uuid
+    post:
+      description: Send the payload to the specified webhook subscription.
+      tags:
+        - subscriptions
+      operationId: testSubscription
+      requestBody:
+        description: >-
+          Any JSON  object to be sent as sample object to the webhook subscription.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: The payload has been successfully sent to the subscription.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSubscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+  '/subscriptions/{subscriptionId}/exchanges':
+    parameters:
+      - name: subscriptionId
+        in: path
+        required: true
+        description: Subscription ID.
+        schema:
+          type: string
+          format: uuid
+    get:
+      description: Returns the history of webhook exchanges (requests/responses) for the identified subscription.
+      tags:
+        - subscriptions
+      operationId: getWebhookExchangeHistory
+      parameters:
+        - name: start
+          in: query
+          schema:
+            type: string
+            format: date-time
+          style: form
+          description: The start time window to retrieve the result sets. Default time window is 5 minutes.
+        - name: end
+          in: query
+          schema:
+            type: string
+            format: date-time
+          style: form
+          description: The end time window to retrieve the result sets. Default time window is 5 minutes.
+      responses:
+        '200':
+          description: A JSON array of webhook exchanges.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookExchange'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+components:
+  parameters:
+    PageNumberParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: The page number from which to return the results, starts at 1.
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 20
+      description: The number of entities by page.
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: (createTimestamp|modifyTimestamp|subscriptionMode|webhookUrl),(ASC|DESC)
+      style: form
+      description: The field to sort the result sets in ASC or DESC order.
+    QueryParam:
+      name: query
+      in: query
+      schema:
+        type: string
+        pattern: ^([\w.\-_]+?)(:|!)"?([\w\-._:\s/]+?)"?$
+      style: form
+      description: The field to query the result sets.
+  schemas:
+    WebhookSubscription:
+      type: object
+      description: >-
+        The webhook subscription defines the webhook URL to notify (callback) and the subscription mode which determines the payload type sent with the webhook callback.
+          The unique ID of the subscription is auto-generated.
+      required:
+        - id
+        - subscriptionMode
+        - webhookUrl
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the subscription.
+          readOnly: true
+        createTimestamp:
+          type: string
+          format: date-time
+          example: 2021-02-10T14:38:36Z
+          readOnly: true
+        modifyTimestamp:
+          type: string
+          format: date-time
+          example: 2021-02-10T14:38:36Z
+          readOnly: true
+        subscriptionStatus:
+          type: string
+          enum:
+            - active
+            - suspended
+            - failed
+          description: Subscription status
+          example: active
+        subscriptionMode:
+          type: string
+          enum:
+            - snapshot-only
+            - snapshot-patch
+            - event
+          description: Subscription mode which determines the type of record (snapshot, patch, event) that will be transmitted in the payload of the webhook callback.
+          example: snapshot-only
+        webhookUrl:
+          type: string
+          format: url
+          description: The URL of the webhook receiver to notify.
+        webhookHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Map of key-value pairs which will be added as headers when requesting the target URL.
+          example:
+            X-Custom-Header: headerValue
+        retryOnHttpCodes:
+          type: array
+          items:
+            type: integer
+          description: A list of http codes which will trigger the retry on webhook call. Others codes don't trigger any retry.
+          default: [500, 503, 504]
+          example:
+            - 500
+            - 503
+            - 504
+        retryMaxAttempts:
+          type: integer
+          minimum: 0
+          maximum: 15
+          description: The max number of retries in case of webhook call errors
+          default: 3
+          example: 10
+        retryBackOffInitialDuration:
+          type: string
+          description: >-
+            Period after which the first retry is attempted (ISO-8601 format).
+            Min = PT0S (0s) ; Max = PT10S (10s)
+          default: 'PT1S'
+          example: 'PT5S'
+        retryBackOffMaxDuration:
+          type: string
+          description: >-
+            Period max between two attempts (ISO-8601 format).
+            Min = PT0S (0s) ; Max = PT60S (60s)
+          default: 'PT10S'
+          example: 'PT30S'
+        retryBackOffFactor:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: The factor used to determine the next retry duration
+          default: 0.5
+          example: 1
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Map of key-value pairs of extra information which will be added to the stored object.
+          example:
+            key: value
+    WebhookExchange:
+      type: object
+      description: >-
+        Contains information about the request and response of a webhook notification.
+      required:
+        - subscriptionId
+        - pipelineId
+        - eventType
+        - requestDatetime
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+          description: The unique identifier of the subscription.
+          readOnly: true
+        pipelineId:
+          type: string
+          format: uuid
+          description: The identifier of the payload.
+          readOnly: true
+        eventType:
+          type: string
+          enum:
+            - snapshot
+            - patch
+            - error
+          description: The type of the payload.
+          readOnly: true
+        requestDatetime:
+          type: string
+          format: date-time
+          example: 2021-02-10T14:38:36Z
+          readOnly: true
+        requestDuration:
+          type: string
+          description: Duration of the exchange (ISO-8601 format).
+          example: 'PT0.123S'
+          readOnly: true
+        requestRetryAttempts:
+          type: integer
+          description: Retry count if previous exchange has failed.
+          readOnly: true
+        requestRetryMaxAttempts:
+          type: integer
+          description: Retry max attempts.
+          readOnly: true
+        requestUrl:
+          type: string
+          format: url
+          description: The URL of the webhook receiver called during the exchange.
+          readOnly: true
+        requestHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Map of key-value pairs added as headers when requesting the webhook URL.
+          example:
+            X-Custom-Header: headerValue
+          readOnly: true
+        responseCode:
+          type: integer
+          minimum: 100
+          maximum: 599
+          description: The response code provided by the webhook URL.
+          example: 200
+          readOnly: true
+        responseHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of key-value headers provided by the webhook URL.
+          readOnly: true
+        responseBody:
+          type: string
+          description: The response body provided by the webhook URL.
+          readOnly: true
+        responseSize:
+          type: string
+          description: The size of the response body provided by the webhook URL.
+          readOnly: true
+        errorMessage:
+          type: string
+          description: The detail of the error if the exchange with the webhook URL fails.
+          readOnly: true
+    Links:
+      type: object
+      required:
+        - self
+        - first
+        - last
+      properties:
+        self:
+          type: string
+          description: The link to the page itself
+          readOnly: true
+        first:
+          type: string
+          description: The link to the first page
+          readOnly: true
+        prev:
+          type: string
+          description: The link to the previous page
+          readOnly: true
+        next:
+          type: string
+          description: The link to the next page
+          readOnly: true
+        last:
+          type: string
+          description: The link to the last page
+          readOnly: true
+    Errors:
+      type: object
+      required:
+        - errors
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorMessage'
+          minItems: 1
+    ErrorMessage:
+      type: object
+      required:
+        - status
+        - title
+        - detail
+      properties:
+        status:
+          description: The error status code applicable to this problem.
+          type: integer
+        title:
+          type: string
+          description: A summary of the problem.
+        detail:
+          type: string
+          description: A more detailed explanation.
+        source:
+          type: object
+          description: An object containing references to the source of the error.
+          required:
+            - parameter
+          properties:
+            parameter:
+              type: string
+              description: Name of the field/parameter.
+        meta:
+          type: object
+          description: >
+            A meta object containing non-standard meta-information about the error.
+            Values are optional.
+  responses:
+    NotFound:
+      description: The resource with specified ID was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    BadRequest:
+      description: Bad request. JSON unmarshalling, validation, query parameters missmatch.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    DefaultError:
+      description: Unexpected error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'

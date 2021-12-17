@@ -1,0 +1,158 @@
+openapi: 3.0.3
+info:
+  version: 2.0.3-SNAPSHOT
+  title: Streams Http Post Publisher API v2.0.3-SNAPSHOT
+  x-audience: axway-customer
+  description: >-
+    Axway Streams augments your existing infrastructure with an event hub that facilitates the exchange of messages/events between devices, (micro) services and applications. Go beyond the traditional request-response paradigm and its limitations. Streams uses event-driven APIs such as server-sent events (SSE) and Webhooks to help you adopt event-driven integration patterns with your ecosystem.
+
+
+    The HTTP Post publisher allows any external component (device/sensor, application, micro-service, etc) capable of performing an HTTP request to publish payloads in a Streams topic. Streams will then take care of storing and forwarding events to the subscribers.
+  contact:
+    name: Streams
+    email: support@axway.com
+  x-logo:
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Axway_Logo.png/800px-Axway_Logo.png'
+servers:
+  - url: /streams/publishers/http-post/api/v1
+    description: For Kubernetes environment
+  - url: /api/v1
+    description: For Docker-compose environment
+tags:
+  - name: publishers
+    description: Streams Http Post Publisher
+    externalDocs:
+      url: https://streams-open-docs.netlify.app/docs/publishers/publisher-http-post/
+
+paths:
+  '/topics/{topicId}':
+    parameters:
+      - name: topicId
+        in: path
+        required: true
+        description: The unique identifier of the topic.
+        schema:
+          type: string
+          format: uuid
+    post:
+      description: Publishes data to a topic.
+      tags:
+        - publishers
+      operationId: publishData
+      requestBody:
+        description: A JSON object representing the data to publish.
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                - type: array
+                  items:
+                    type: object
+            example: { "object": {"key": "value"}, "array": [1,2], "string": "some text" }
+      responses:
+        '202':
+          description: The publication request is valid and has been accepted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+components:
+  schemas:
+    Errors:
+      type: object
+      required:
+        - errors
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorMessage'
+          minItems: 1
+    ErrorMessage:
+      type: object
+      required:
+        - status
+        - title
+        - detail
+      properties:
+        status:
+          description: The error status code applicable to this problem.
+          type: integer
+        title:
+          type: string
+          description: A summary of the problem.
+        detail:
+          type: string
+          description: A more detailed explanation.
+        source:
+          type: object
+          description: An object containing references to the source of the error.
+          required:
+            - parameter
+          properties:
+            parameter:
+              type: string
+              description: Name of the field/parameter.
+        meta:
+          type: object
+          description: >
+            A meta object containing non-standard meta-information about the error.
+            Values are optional.
+  responses:
+    BadRequest:
+      description: The specified ID is malformated.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    NotFound:
+      description: The resource with specified ID was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    MethodNotAllowed:
+      description: Http method is not allowed. Only POST is allowed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    NotAcceptable:
+      description: Accept headers is not supported by the server. Only application/json is accepted.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    Gone:
+      description: >
+        Indicates that the topic is no longer available because of the following reasons:
+           - The topic has been permanently deleted.
+           - The topic is configured with the `alwaysOn` option set to `false` and no subscriber is currently subscribed to the topic.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    UnsupportedMediaType:
+      description: Content-type headers or body sent are not supported by the server. Only application/json is supported.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    DefaultError:
+      description: An unexpected error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'

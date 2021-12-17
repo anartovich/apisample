@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  version: 2.0.3-SNAPSHOT
+  title: Streams Kafka Subscriber API v2.0.3-SNAPSHOT
+  x-audience: axway-customer
+  description: >-
+    Axway Streams augments your existing infrastructure with an event hub that facilitates the exchange of messages/events between devices, (micro) services and applications. Go beyond the traditional request-response paradigm and its limitations. Streams uses event-driven APIs such as server-sent events (SSE), Webhooks and Kafka to help you adopt event-driven integration patterns with your ecosystem.
+
+
+    Streams Kafka subscriber allows the publication forwarding to a Kafka server that was provided during the subscription process.
+
+
+  contact:
+    name: Streams
+    email: support@axway.com
+  x-logo:
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Axway_Logo.png/800px-Axway_Logo.png'
+servers:
+  - url: /streams/subscribers/kafka/api/v1
+    description: For Kubernetes environment
+  - url: /api/v1
+    description: For Docker-compose environment
+tags:
+  - name: subscriptions
+    description: Streams Kafka Subscriber
+    externalDocs:
+      url: https://streams-open-docs.netlify.app/docs/subscribers/subscriber-kafka/
+paths:
+  '/topics/{topicIdOrName}/subscriptions':
+    parameters:
+      - name: topicIdOrName
+        in: path
+        required: true
+        description: Topic ID or Name.
+        schema:
+          type: string
+    post:
+      description: Creates a Kafka subscription to the specified topic.
+      tags:
+        - subscriptions
+      operationId: createSubscription
+      requestBody:
+        description: >-
+          A JSON object describing the Kafka subscription.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KafkaSubscription'
+      responses:
+        '201':
+          description: A Kafka subscription as a JSON object.
+          headers:
+            Location:
+              description: The relative URI of the created resource.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KafkaSubscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    get:
+      description: Returns an array of all kafka subscriptions.
+      tags:
+        - subscriptions
+      operationId: getAllSubscriptions
+      parameters:
+        - $ref: '#/components/parameters/PageNumberParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/QueryParam'
+      responses:
+        '200':
+          description: A JSON array of kafka subscriptions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KafkaSubscription'
+                  links:
+                    $ref: '#/components/schemas/Links'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+  '/subscriptions/{subscriptionId}':
+    parameters:
+      - name: subscriptionId
+        in: path
+        required: true
+        description: Subscription ID.
+        schema:
+          type: string
+          format: uuid
+    get:
+      description: Returns the specified Kafka subscription.
+      tags:
+        - subscriptions
+      operationId: getSubscription
+      responses:
+        '200':
+          description: The Kafka subscription has been successfully retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KafkaSubscription'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    patch:
+      description: Partially updates the identified Kafka subscription.
+      tags:
+        - subscriptions
+      operationId: patchSubscription
+      requestBody:
+        description: A JSON object representing the subset of properties to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KafkaSubscription'
+      responses:
+        '200':
+          description: The subscription has been successfully updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KafkaSubscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    delete:
+      description: Deletes the identified Kafka subscription.
+      tags:
+        - subscriptions
+      operationId: deleteSubscription
+      responses:
+        '204':
+          description: The Kafka subscription has been successfully deleted.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+  '/subscriptions/{subscriptionId}/test':
+    parameters:
+      - name: subscriptionId
+        in: path
+        required: true
+        description: Subscription ID.
+        schema:
+          type: string
+          format: uuid
+    post:
+      description: Send the payload to the specified kafka subscription.
+      tags:
+        - subscriptions
+      operationId: testSubscription
+      requestBody:
+        description: >-
+          Any JSON  object to be sent as sample object to the kafka subscription.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: The payload has been successfully sent to the subscription.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+components:
+  parameters:
+    PageNumberParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: The page number from which to return the results, starts at 1.
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 20
+      description: The number of entities by page.
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: (createTimestamp|modifyTimestamp|subscriptionMode|kafkaBootstrapServers|kafkaTopic|kafkaPartition|kafkaRecordKey),(ASC|DESC)
+      style: form
+      description: The field to sort the result sets in ASC or DESC order.
+    QueryParam:
+      name: query
+      in: query
+      schema:
+        type: string
+        pattern: ^([\w.\-_]+?)(:|!)"?([\w\-._:\s/]+?)"?$
+      style: form
+      description: The field to query the result sets.
+  schemas:
+    KafkaSubscription:
+      type: object
+      description: >-
+        The Kafka subscription defines the Kakfa producer parameters used to publish in a Kafka topic/partition and the subscription mode which determines the payload type sent in record.
+          The unique ID of the subscription is auto-generated.
+      required:
+        - kafkaBootstrapServers
+        - kafkaTopic
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the subscription.
+          readOnly: true
+        createTimestamp:
+          type: string
+          format: date-time
+          example: 2021-02-10T14:38:36Z
+          readOnly: true
+        modifyTimestamp:
+          type: string
+          format: date-time
+          example: 2021-02-10T14:38:36Z
+          readOnly: true
+        subscriptionStatus:
+          type: string
+          enum:
+            - active
+            - suspended
+            - failed
+          description: Subscription status
+          example: active
+        subscriptionMode:
+          type: string
+          enum:
+            - snapshot-only
+            - snapshot-patch
+            - event
+          description: Subscription mode which determines the type of record (snapshot, patch, event) that will be transmitted in the payload of the kafka record.
+          example: snapshot-only
+        kafkaBootstrapServers:
+          type: string
+          description: List of Kafka servers used to bootstrap connections to Kafka.
+          example: host1:1234,host2:5678
+        kafkaTopic:
+          type: string
+          description: Kafka topic in which record must be sent
+        kafkaPartition:
+          type: integer
+          minimum: 0
+          description: Kafka partition to use
+        kafkaRecordKey:
+          type: string
+          description: Record dataKey to use for each sent record. If not set, a default will be used (the topicId).
+        kafkaProducerProperties:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Map of key-value pairs of configuration which will be added to the kafka producer.
+          example:
+            key: value
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Map of key-value pairs of extra information which will be added to the stored object.
+          example:
+            key: value
+    Links:
+      type: object
+      required:
+        - self
+        - first
+        - last
+      properties:
+        self:
+          type: string
+          description: The link to the page itself
+          readOnly: true
+        first:
+          type: string
+          description: The link to the first page
+          readOnly: true
+        prev:
+          type: string
+          description: The link to the previous page
+          readOnly: true
+        next:
+          type: string
+          description: The link to the next page
+          readOnly: true
+        last:
+          type: string
+          description: The link to the last page
+          readOnly: true
+    Errors:
+      type: object
+      required:
+        - errors
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorMessage'
+          minItems: 1
+    ErrorMessage:
+      type: object
+      required:
+        - status
+        - title
+        - detail
+      properties:
+        status:
+          description: The error status code applicable to this problem.
+          type: integer
+        title:
+          type: string
+          description: A summary of the problem.
+        detail:
+          type: string
+          description: A more detailed explanation.
+        source:
+          type: object
+          description: An object containing references to the source of the error.
+          required:
+            - parameter
+          properties:
+            parameter:
+              type: string
+              description: Name of the field/parameter.
+        meta:
+          type: object
+          description: >
+            A meta object containing non-standard meta-information about the error.
+            Values are optional.
+  responses:
+    NotFound:
+      description: The resource with specified ID was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    BadRequest:
+      description: Bad request. JSON unmarshalling, validation, query parameters missmatch.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    DefaultError:
+      description: Unexpected error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'

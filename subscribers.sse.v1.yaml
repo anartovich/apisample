@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  version: 2.0.3-SNAPSHOT
+  title: Streams SSE Subscriber API v2.0.3-SNAPSHOT
+  x-audience: axway-customer
+  description: >-
+    Axway Streams augments your existing infrastructure with an event hub that facilitates the exchange of messages/events between devices, (micro) services and applications. Go beyond the traditional request-response paradigm and its limitations. Streams uses event-driven APIs such as server-sent events (SSE) and Webhooks to help you adopt event-driven integration patterns with your ecosystem.
+
+    Streams SSE subscriber authentication API. Allows generation of access tokens required to subscribe to a topic when authentication is activated.
+  contact:
+    name: Streams
+    email: support@axway.com
+  x-logo:
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Axway_Logo.png/800px-Axway_Logo.png'
+servers:
+  - url: /streams/subscribers/sse/api/v1
+    description: For Kubernetes environment
+  - url: /api/v1
+    description: For Docker-compose environment
+tags:
+  - name: subscriptions
+    description: Streams SSE Subscriber
+    externalDocs:
+      url: https://streams-open-docs.netlify.app/docs/subscribers/subscriber-sse/
+paths:
+  '/topics/{topicIdOrName}/auth':
+    parameters:
+      - name: topicIdOrName
+        in: path
+        required: true
+        description: Topic ID or Name.
+        schema:
+          type: string
+    get:
+      description: Generate a JSON Web Token needed to subscribe to the specified topic.
+      tags:
+        - subscriptions
+      operationId: generateAuthToken
+      responses:
+        '200':
+          description: A JSON Web Token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SseAccessToken'
+        '5XX':
+          description: Internal error.
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    SseAccessToken:
+      type: object
+      description: >-
+        A JSON object representing the access token used to establish a SSE subscription.
+      properties:
+        token:
+          type: string
+          format: JWT
+          description: The access token.
+          readOnly: true

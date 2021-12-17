@@ -1,0 +1,584 @@
+openapi: 3.0.3
+info:
+  version: 2.0.3-SNAPSHOT
+  title: Streams Topic API v2.0.3-SNAPSHOT
+  x-audience: axway-customer
+  description: >-
+    Axway Streams augments your existing infrastructure with an event hub that facilitates the exchange of messages/events between devices, (micro) services and applications. Go beyond the traditional request-response paradigm and its limitations. Streams uses event-driven APIs such as server-sent events (SSE) and Webhooks to help you adopt event-driven integration patterns with your ecosystem.
+
+
+    The Streams Management API provides programmatic access to efficiently manage your Streams topics.
+    Our API is organized around REST and has predictable, resource-oriented URLs, and uses HTTP response codes to indicate API errors.
+    We use built-in HTTP features, like HTTP verbs, which are understood by off-the-shelf HTTP clients. We support cross-origin resource sharing, allowing you to interact securely with our API from a client-side web application.
+    JSON is returned by all API responses, including errors. Finally, we rely on gzip format to compress all API responses via the Content-Encoding entity header.
+  contact:
+    name: Streams
+    email: support@axway.com
+  x-logo:
+    url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Axway_Logo.png/800px-Axway_Logo.png'
+servers:
+  - url: http://10.129.61.92:9001/streams/hub/api/v1
+    description: For Kubernetes environment
+  - url: http://10.129.61.92:9001/api/v1
+    description: For Docker-compose environment
+tags:
+  - name: topics
+    description: Streams Topics API
+    externalDocs:
+      url: https://streams-open-docs.netlify.app/docs/topics-api/
+paths:
+  /topics:
+    post:
+      description: Creates a topic configuration.
+      tags:
+        - topics
+      operationId: createTopicConfig
+      requestBody:
+        description: >-
+          A JSON object describing the topic's configuration.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopicConfig'
+      responses:
+        '201':
+          description: A topic configuration as a JSON object.
+          headers:
+            Location:
+              description: The relative URI of the created resource.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicConfig'
+          links:
+            GetTopicConfig:
+              operationId: getTopicConfigById
+              parameters:
+                topicId: $response.body#/id
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/DuplicationError'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    get:
+      description: Returns an array of all topic configurations.
+      tags:
+        - topics
+      operationId: getAllTopicConfig
+      parameters:
+        - $ref: '#/components/parameters/PageNumberParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/QueryParam'
+      responses:
+        '200':
+          description: A JSON array of topic configurations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TopicConfig'
+                  links:
+                    $ref: '#/components/schemas/Links'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+  '/topics/{topicIdOrName}':
+    parameters:
+      - name: topicIdOrName
+        in: path
+        required: true
+        description: Topic ID or Name.
+        schema:
+          type: string
+    get:
+      description: Returns the configuration of an existing topic.
+      tags:
+        - topics
+      operationId: getTopicConfigByIdOrName
+      responses:
+        '200':
+          description: The topic configuration has been successfully retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicConfig'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    patch:
+      description: Partially updates the identified topic's configuration.
+      tags:
+        - topics
+      operationId: updateTopicConfig
+      requestBody:
+        description: A JSON object representing the subset of properties to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopicConfig'
+      responses:
+        '200':
+          description: The topic configuration has been successfully updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/DuplicationError'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+    delete:
+      description: Deletes the specified topic configuration.
+      tags:
+        - topics
+      operationId: deleteTopicConfig
+      responses:
+        '204':
+          description: The topic configuration has been successfully deleted.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '5XX':
+          $ref: '#/components/responses/DefaultError'
+components:
+  parameters:
+    PageNumberParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: The page number from which to return the results, starts at 1.
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 20
+      description: The number of entities by page.
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: (name|createTimestamp|modifyTimestamp|publisher.type),(ASC|DESC)
+      style: form
+      description: The field to sort the result sets in ASC or DESC order.
+    QueryParam:
+      name: query
+      in: query
+      schema:
+        type: string
+        pattern: ^([\w.\-_]+?)(:|!)"?([\w\-._:\s/]+?)"?$
+      style: form
+      description: The field to query the result sets.
+  schemas:
+    TopicConfig:
+      type: object
+      description: >-
+        The configuration to create a Streams topic.
+        It defines the name of the topic, the publisher and subscribers configurations.
+        The unique ID of the topic is auto-generated.
+      required:
+        - name
+        - publisher
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier of the topic configuration from which subscribers can subscribe.
+          readOnly: true
+        createTimestamp:
+          type: string
+          format: date-time
+          example: 2021-02-03T15:51:08Z
+          readOnly: true
+        modifyTimestamp:
+          type: string
+          format: date-time
+          example: 2021-02-03T15:51:08Z
+          readOnly: true
+        name:
+          type: string
+          description: Name of the topic.
+          minLength: 1
+          maxLength: 255
+          pattern: ^[\w\-_.]*$
+          example: my-topic-name
+        subscribers:
+          type: array
+          description: List of subscribers enabled for this topic. If no subscriber is provided, the 'sse' subscriber will be enabled by default.
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/SseSubscriberConfig'
+              - $ref: '#/components/schemas/WebSocketSubscriberConfig'
+              - $ref: '#/components/schemas/WebhookSubscriberConfig'
+              - $ref: '#/components/schemas/KafkaSubscriberConfig'
+        publisher:
+          type: object
+          required:
+            - type
+          properties:
+            type:
+              type: string
+              enum:
+                - http-poller
+                - http-post
+                - kafka
+                - sfdc
+              description: Type of publisher that will publish in the topic.
+              example: http-poller
+            alwaysOn:
+              type: boolean
+              description: Define whether the publisher should accept new payloads even if no subscriber is currently subscribed to the topic.
+              example: true
+            config:
+              type: object
+              description: Publisher-specific configuration.
+              oneOf:
+                - $ref: '#/components/schemas/HttpPollerConfig'
+                - $ref: '#/components/schemas/HttpPostConfig'
+                - $ref: '#/components/schemas/KafkaConfig'
+                - $ref: '#/components/schemas/SfdcConfig'
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Map of key-value pairs of extra information which will be added to the stored object.
+          example:
+            key: value
+    SubscriberConfig:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          description: >-
+            Type of subscriber.
+          type: string
+          enum:
+            - sse
+            - webhook
+            - kafka
+            - websocket
+        allowedSubscriptionModes:
+          description: >-
+            Subscription modes that subscribers can use to consume events from a topic can be restricted.
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+              - snapshot-patch
+              - snapshot-only
+              - event
+          default: [snapshot-patch, snapshot-only]
+          example: [snapshot-patch, snapshot-only]
+        defaultSubscriptionMode:
+          description: >-
+            Defines the default mode to use from the list of allowed subscription modes.
+            Used when subscriber gives no specific preference.
+          type: string
+          enum:
+            - snapshot-patch
+            - snapshot-only
+            - event
+          default:
+            snapshot-patch
+    SseSubscriberConfig:
+      description: Configuration for the SSE subscribers.
+      allOf:
+        - $ref: '#/components/schemas/SubscriberConfig'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - sse
+    WebSocketSubscriberConfig:
+      description: Configuration for the WebSocket subscribers.
+      allOf:
+        - $ref: '#/components/schemas/SubscriberConfig'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - websocket
+    WebhookSubscriberConfig:
+      description: Configuration for the webhook subscribers.
+      allOf:
+        - $ref: '#/components/schemas/SubscriberConfig'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - webhook
+            config:
+              allOf:
+                - type: object
+                  properties:
+                    retryOnHttpCodes:
+                      type: array
+                      items:
+                        type: integer
+                      description: A list of http codes which will trigger the retry. Others codes generate on error without any retry.
+                      default:
+                        - 500
+                        - 503
+                        - 504
+                      example:
+                        - 500
+                        - 503
+                        - 504
+                - $ref: '#/components/schemas/RetryableConfig'
+    KafkaSubscriberConfig:
+      description: Configuration for the Kafka subscribers.
+      allOf:
+        - $ref: '#/components/schemas/SubscriberConfig'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - kafka
+            config:
+              type: object
+              properties:
+                producerProperties:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: >-
+                    Map of key-value pairs of configuration which will be added to all subscriptions kafka producer.
+                  example:
+                    key: value
+    HttpPollerConfig:
+      allOf:
+        - type: object
+          required:
+            - url
+          properties:
+            url:
+              type: string
+              format: url
+              description: Target URL that Streams will request (polling) at the given polling period.
+              example: 'http://stockmarket.streamdata.io/v2/prices'
+            pollingPeriod:
+              type: string
+              description: >-
+                Period at which the target URL will be requested (ISO-8601 format).
+                Min = PT0.5S (500ms) ; Max = PT1H (1hour)
+              default: 'PT2S'
+              example: 'PT5S'
+            headers:
+              type: object
+              description: >-
+                Map of key-value pairs which will be added as headers when requesting the target URL.
+              example:
+                X-Custom-Header: aHeaderValue
+            retryOnHttpCodes:
+              type: array
+              items:
+                type: integer
+              description: A list of http codes which will trigger the retry. Others codes generate on error without any retry.
+              default:
+                - 500
+                - 503
+                - 504
+              example:
+                - 500
+                - 503
+                - 504
+        - $ref: '#/components/schemas/RetryableConfig'
+    KafkaConfig:
+      type: object
+      required:
+        - bootstrapServers
+        - topic
+      properties:
+        bootstrapServers:
+          type: string
+          description: Addresses of the external Kafka brokers to connect to.
+        topic:
+          type: string
+          description: Name of the Kafka topic to connect to.
+        keyValue:
+          type: string
+          description: Name of the record key to filter when subscribing to Kafka topic.
+    SfdcConfig:
+      allOf:
+        - type: object
+          required:
+            - loginUrl
+            - instanceUrl
+            - privateKey
+            - clientId
+            - username
+            - channel
+          properties:
+            loginUrl:
+              type: string
+              description: The login url of your Salesforce instance.
+            instanceUrl:
+              type: string
+              description: The url of your Salesforce instance.
+            privateKey:
+              type: string
+              description: The private key (PKCS#1 or PKCS#8) of the Digital Certificate setup in your Salesforce Connected App.
+            clientId:
+              type: string
+              description: The client id or customer id of your Salesforce Connected App.
+            username:
+              type: string
+              description: The username, login or email of your Salesforce account.
+            channel:
+              type: string
+              description: The channel id to subscribe to Salesforce Platform Event.
+        - $ref: '#/components/schemas/RetryableConfig'
+    RetryableConfig:
+      type: object
+      properties:
+        retryMaxAttempts:
+          type: integer
+          minimum: 0
+          maximum: 15
+          description: The max number of retries in case of errors
+          default: 3
+          example: 10
+        retryBackOffInitialDuration:
+          type: string
+          description: >-
+            Period after which the first retry is attempt (ISO-8601 format).
+            Min = PT0S (0s) ; Max = PT10S (10s)
+          default: 'PT1S'
+          example: 'PT5S'
+        retryBackOffMaxDuration:
+          type: string
+          description: >-
+            Period max between two attempt (ISO-8601 format).
+            Min = PT0S (0s) ; Max = PT60S (60s)
+          default: 'PT10S'
+          example: 'PT30S'
+        retryBackOffFactor:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: The factor used to determine the next retry duration
+          default: 0.5
+          example: 1
+    HttpPostConfig:
+      type: object
+    Errors:
+      type: object
+      required:
+        - errors
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorMessage'
+          minItems: 1
+    Links:
+      type: object
+      required:
+        - self
+        - first
+        - last
+      properties:
+        self:
+          type: string
+          description: The link to the page itself
+          readOnly: true
+        first:
+          type: string
+          description: The link to the first page
+          readOnly: true
+        prev:
+          type: string
+          description: The link to the previous page
+          readOnly: true
+        next:
+          type: string
+          description: The link to the next page
+          readOnly: true
+        last:
+          type: string
+          description: The link to the last page
+          readOnly: true
+    ErrorMessage:
+      type: object
+      required:
+        - status
+        - title
+        - detail
+      properties:
+        status:
+          description: The status code applicable to this problem.
+          type: integer
+        title:
+          type: string
+          description: A summary of the problem.
+        detail:
+          type: string
+          description: A more detailed explanation.
+        source:
+          type: object
+          description: An object containing references to the source of the error.
+          required:
+            - parameter
+          properties:
+            parameter:
+              type: string
+              description: name of the field/parameter
+        meta:
+          type: object
+          description: >
+            A meta object containing non-standard meta-information about the error.
+            Values are optional.
+  responses:
+    NotFound:
+      description: The resource with specified ID was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    BadRequest:
+      description: Bad request. JSON unmarshalling, validation, query parameters missmatch.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    DuplicationError:
+      description: The request conflicts with the current state of the resource.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    DefaultError:
+      description: Unexpected error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errors'
